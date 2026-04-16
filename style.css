@@ -1,11 +1,10 @@
 :root {
-    --bg-color: #050505;
+    --void-black: #020202;
     --neon-cyan: #00f3ff;
-    --neon-pink: #ff007f;
-    --neon-yellow: #fefe00;
-    --neon-red: #ff3131;
-    --glass-bg: rgba(255, 255, 255, 0.05);
-    --glass-border: rgba(255, 255, 255, 0.1);
+    --neon-magenta: #ff00ff;
+    --neon-green: #39ff14;
+    --critical-red: #ff3131;
+    --glass-bg: rgba(0, 0, 0, 0.7);
     --font-main: 'Rajdhani', sans-serif;
     --font-heading: 'Orbitron', sans-serif;
 }
@@ -14,10 +13,12 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    cursor: crosshair;
+    user-select: none;
 }
 
-body {
-    background-color: var(--bg-color);
+body.hardcore-theme {
+    background-color: var(--void-black);
     color: #fff;
     font-family: var(--font-main);
     overflow: hidden;
@@ -27,170 +28,208 @@ body {
     align-items: center;
 }
 
-#game-container {
+#game-wrapper {
     position: relative;
     width: 100vw;
     height: 100vh;
     max-width: 800px;
     max-height: 900px;
-    border: 2px solid var(--glass-border);
-    background: radial-gradient(circle at center, #111, #000);
-    box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
-    overflow: hidden;
+    background: #000;
+    border: 1px solid #222;
+    box-shadow: 0 0 100px rgba(0, 0, 0, 1);
+    display: flex;
+    flex-direction: column;
 }
 
 canvas {
-    display: block;
     width: 100%;
     height: 100%;
+    background: radial-gradient(circle at center, #0a0a0a 0%, #000 100%);
 }
 
-/* HUD Styling */
+/* HUD System */
 #hud {
     position: absolute;
     top: 0;
-    left: 0;
     width: 100%;
-    padding: 20px;
+    height: 80px;
     display: flex;
     justify-content: space-between;
-    pointer-events: none;
+    align-items: center;
+    padding: 0 30px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
     z-index: 10;
-    font-size: 1.2rem;
-    font-weight: 700;
-    text-transform: uppercase;
+    pointer-events: none;
+}
+
+.hud-left, .hud-right {
+    width: 200px;
+}
+
+.label {
+    font-size: 0.7rem;
+    color: #555;
     letter-spacing: 2px;
+    margin-bottom: 5px;
+    font-family: var(--font-heading);
 }
 
-.hud-item {
-    text-shadow: 0 0 10px var(--neon-cyan);
-    color: var(--neon-cyan);
+.energy-container {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    position: relative;
+    overflow: hidden;
 }
 
-#lives {
-    color: var(--neon-pink);
-    text-shadow: 0 0 10px var(--neon-pink);
-}
-
-/* Overlay Menus */
-#overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
+#energy-bar {
     width: 100%;
     height: 100%;
-    z-index: 20;
+    background: var(--neon-cyan);
+    box-shadow: 0 0 10px var(--neon-cyan);
+    transition: width 0.1s linear, background 0.3s ease;
+}
+
+.energy-critical #energy-bar {
+    background: var(--critical-red);
+    box-shadow: 0 0 15px var(--critical-red);
+    animation: flash 0.5s infinite;
+}
+
+.score-display {
+    font-family: var(--font-heading);
+    font-size: 2.2rem;
+    color: #fff;
+    text-shadow: 0 0 10px var(--neon-cyan);
+    letter-spacing: 4px;
+}
+
+.level-display {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    color: var(--neon-magenta);
+    text-align: right;
+    text-shadow: 0 0 10px var(--neon-magenta);
+}
+
+/* Overlay & Screens */
+#overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 100;
     pointer-events: none;
 }
 
-.menu-screen {
+.screen {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(10px);
+    background: var(--glass-bg);
+    backdrop-filter: blur(8px);
     display: none;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     text-align: center;
-    padding: 40px;
     pointer-events: all;
-    transition: opacity 0.5s ease;
+    padding: 20px;
 }
 
-.menu-screen.active {
+.screen.active {
     display: flex;
 }
 
-.neon-text {
+h1.glitch {
     font-family: var(--font-heading);
-    font-size: 4rem;
-    margin-bottom: 0.5rem;
+    font-size: 4.5rem;
+    position: relative;
     color: #fff;
-    text-shadow: 
-        0 0 10px var(--neon-cyan),
-        0 0 20px var(--neon-cyan),
-        0 0 40px var(--neon-cyan);
-    letter-spacing: 5px;
+    text-shadow: 0.05em 0 0 rgba(255, 0, 0, 0.75),
+                 -0.025em -0.05em 0 rgba(0, 255, 0, 0.75),
+                 0.025em 0.05em 0 rgba(0, 0, 255, 0.75);
+    animation: glitch 500ms infinite;
 }
 
-.extreme-text {
-    font-family: var(--font-heading);
-    font-size: 1.5rem;
-    color: var(--neon-pink);
+.subtitle {
+    margin-top: -10px;
+    font-size: 1.2rem;
+    letter-spacing: 12px;
+    color: var(--neon-cyan);
     margin-bottom: 2rem;
-    text-shadow: 0 0 10px var(--neon-pink);
-    transform: skew(-10deg);
 }
 
-.neon-text-red {
-    font-family: var(--font-heading);
-    font-size: 3rem;
-    color: var(--neon-red);
-    text-shadow: 0 0 20px var(--neon-red);
-    margin-bottom: 1rem;
+.warning {
+    color: var(--critical-red);
+    font-size: 0.9rem;
+    font-weight: bold;
+    letter-spacing: 3px;
+    margin-bottom: 2rem;
+    border: 1px solid var(--critical-red);
+    padding: 5px 15px;
 }
 
-.description {
-    font-size: 1.1rem;
-    margin-bottom: 3rem;
+.mission {
     color: #aaa;
+    margin-bottom: 3rem;
     max-width: 400px;
+    line-height: 1.6;
 }
 
-/* Buttons */
-.neon-button, .neon-button-red {
-    padding: 15px 40px;
-    font-family: var(--font-heading);
-    font-size: 1rem;
+.controls-guide {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    color: #555;
+    font-size: 0.8rem;
+    margin-bottom: 3rem;
+}
+
+/* UI Components */
+.cyber-button {
     background: transparent;
     border: 2px solid var(--neon-cyan);
     color: var(--neon-cyan);
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 3px;
+    padding: 15px 50px;
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    letter-spacing: 4px;
     position: relative;
-    transition: all 0.3s ease;
-    box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+    transition: 0.3s;
+    overflow: hidden;
 }
 
-.neon-button:hover {
+.cyber-button:hover {
     background: var(--neon-cyan);
     color: #000;
     box-shadow: 0 0 30px var(--neon-cyan);
 }
 
-.neon-button-red {
-    border-color: var(--neon-red);
-    color: var(--neon-red);
+.cyber-button.red {
+    border-color: var(--critical-red);
+    color: var(--critical-red);
 }
 
-.neon-button-red:hover {
-    background: var(--neon-red);
+.cyber-button.red:hover {
+    background: var(--critical-red);
     color: #fff;
-    box-shadow: 0 0 30px var(--neon-red);
+    box-shadow: 0 0 30px var(--critical-red);
 }
 
-/* Notifications */
-#notif-bar {
-    position: absolute;
-    bottom: 40px;
-    left: 50%;
-    transform: translateX(-50%);
-    color: var(--neon-yellow);
-    font-weight: 700;
-    font-size: 1.5rem;
-    text-shadow: 0 0 10px var(--neon-yellow);
-    opacity: 0;
-    transition: opacity 0.3s ease;
+/* Animations */
+@keyframes glitch {
+    0% { text-shadow: 0.05em 0 0 rgba(255,0,0,0.75), -0.05em -0.025em 0 rgba(0,255,0,0.75), -0.025em 0.05em 0 rgba(0,0,255,0.75); }
+    14% { text-shadow: 0.05em 0 0 rgba(255,0,0,0.75), -0.05em -0.025em 0 rgba(0,255,0,0.75), -0.025em 0.05em 0 rgba(0,0,255,0.75); }
+    15% { text-shadow: -0.05em -0.025em 0 rgba(255,0,0,0.75), 0.025em 0.025em 0 rgba(0,255,0,0.75), -0.05em -0.05em 0 rgba(0,0,255,0.75); }
+    49% { text-shadow: -0.05em -0.025em 0 rgba(255,0,0,0.75), 0.025em 0.025em 0 rgba(0,255,0,0.75), -0.05em -0.05em 0 rgba(0,0,255,0.75); }
+    50% { text-shadow: 0.025em 0.05em 0 rgba(255,0,0,0.75), 0.05em 0 0 rgba(0,255,0,0.75), 0 -0.05em 0 rgba(0,0,255,0.75); }
+    99% { text-shadow: 0.025em 0.05em 0 rgba(255,0,0,0.75), 0.05em 0 0 rgba(0,255,0,0.75), 0 -0.05em 0 rgba(0,0,255,0.75); }
+    100% { text-shadow: -0.025em 0 0 rgba(255,0,0,0.75), -0.025em -0.025em 0 rgba(0,255,0,0.75), -0.025em -0.05em 0 rgba(0,0,255,0.75); }
 }
 
-/* Level Up Animation */
 @keyframes flash {
     0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+    50% { opacity: 0.4; }
 }
 
-.flash {
-    animation: flash 0.5s infinite;
+.critical-flash {
+    animation: flash 0.2s infinite;
 }

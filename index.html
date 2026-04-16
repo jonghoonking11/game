@@ -1,55 +1,58 @@
 <!DOCTYPE html>
 <html lang="ko">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Breaker: Extreme</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Void: Zero Gravity</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
 </head>
-
-<body>
-    <div id="game-container">
-        <!-- Dashboard / HUD -->
+<body class="hardcore-theme">
+    <div id="game-wrapper" class="glitch-container">
         <div id="hud">
-            <div class="hud-item">SCORE: <span id="score">0</span></div>
-            <div class="hud-item">LIVES: <span id="lives">3</span></div>
-            <div class="hud-item">LEVEL: <span id="level">1</span></div>
+            <div class="hud-left">
+                <div class="label">ENERGY</div>
+                <div class="energy-container">
+                    <div id="energy-bar"></div>
+                </div>
+            </div>
+            <div class="hud-center">
+                <div id="score" class="score-display">000000</div>
+            </div>
+            <div class="hud-right">
+                <div class="label">LEVEL</div>
+                <div id="level" class="level-display">01</div>
+            </div>
         </div>
 
         <canvas id="gameCanvas"></canvas>
 
-        <!-- Overlay Menus -->
         <div id="overlay">
-            <div id="start-menu" class="menu-screen active">
-                <h1 class="neon-text">NEON BREAKER</h1>
-                <h2 class="extreme-text">EXTREME</h2>
-                <p class="description">준비됐나요? 속도는 계속 빨라지고 패들은 작아집니다.</p>
-                <button id="start-btn" class="neon-button">START GAME</button>
+            <div id="menu-start" class="screen active">
+                <h1 class="glitch" data-text="NEON VOID">NEON VOID</h1>
+                <h2 class="subtitle">ZERO GRAVITY</h2>
+                <div class="warning">WARNING: HARDCORE DIFFICULTY ENABLED</div>
+                <p class="mission">에너지가 방전되기 전에 모든 장벽을 파괴하십시오.</p>
+                <div class="controls-guide">
+                    <span>[MOUSE] / [ARROW KEYS] TO MOVE</span>
+                    <span>[SPACE] TO PULSE</span>
+                </div>
+                <button id="btn-start" class="cyber-button">INITIALIZE</button>
             </div>
 
-            <div id="game-over-menu" class="menu-screen">
-                <h1 class="neon-text-red">SYSTEM FAILURE</h1>
-                <p>당신의 기록: <span id="final-score">0</span></p>
-                <button id="restart-btn" class="neon-button-red">RETRY</button>
-            </div>
-
-            <div id="pause-menu" class="menu-screen">
-                <h1 class="neon-text">PAUSED</h1>
-                <button id="resume-btn" class="neon-button">RESUME</button>
+            <div id="menu-gameover" class="screen">
+                <h1 class="critical">VOID CONSUMED YOU</h1>
+                <div class="stat">SCORE: <span id="final-score">0</span></div>
+                <button id="btn-retry" class="cyber-button red">REBOOT SYSTEM</button>
             </div>
         </div>
 
-        <!-- Notification area for Power-ups -->
-        <div id="notif-bar"></div>
+        <div id="vfx-layer"></div>
     </div>
 
+    <!-- Preload some glitch sounds/placeholders if needed in future -->
     <script src="game.js"></script>
 </body>
-
 </html>

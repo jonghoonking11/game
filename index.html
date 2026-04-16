@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Breaker: Extreme</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Dashboard / HUD -->
+        <div id="hud">
+            <div class="hud-item">SCORE: <span id="score">0</span></div>
+            <div class="hud-item">LIVES: <span id="lives">3</span></div>
+            <div class="hud-item">LEVEL: <span id="level">1</span></div>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- Overlay Menus -->
+        <div id="overlay">
+            <div id="start-menu" class="menu-screen active">
+                <h1 class="neon-text">NEON BREAKER</h1>
+                <h2 class="extreme-text">EXTREME</h2>
+                <p class="description">준비됐나요? 속도는 계속 빨라지고 패들은 작아집니다.</p>
+                <button id="start-btn" class="neon-button">START GAME</button>
+            </div>
+
+            <div id="game-over-menu" class="menu-screen">
+                <h1 class="neon-text-red">SYSTEM FAILURE</h1>
+                <p>당신의 기록: <span id="final-score">0</span></p>
+                <button id="restart-btn" class="neon-button-red">RETRY</button>
+            </div>
+
+            <div id="pause-menu" class="menu-screen">
+                <h1 class="neon-text">PAUSED</h1>
+                <button id="resume-btn" class="neon-button">RESUME</button>
+            </div>
+        </div>
+
+        <!-- Notification area for Power-ups -->
+        <div id="notif-bar"></div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>

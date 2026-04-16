@@ -1,0 +1,196 @@
+:root {
+    --bg-color: #050505;
+    --neon-cyan: #00f3ff;
+    --neon-pink: #ff007f;
+    --neon-yellow: #fefe00;
+    --neon-red: #ff3131;
+    --glass-bg: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --font-main: 'Rajdhani', sans-serif;
+    --font-heading: 'Orbitron', sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: #fff;
+    font-family: var(--font-main);
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    max-width: 800px;
+    max-height: 900px;
+    border: 2px solid var(--glass-border);
+    background: radial-gradient(circle at center, #111, #000);
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* HUD Styling */
+#hud {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+    z-index: 10;
+    font-size: 1.2rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.hud-item {
+    text-shadow: 0 0 10px var(--neon-cyan);
+    color: var(--neon-cyan);
+}
+
+#lives {
+    color: var(--neon-pink);
+    text-shadow: 0 0 10px var(--neon-pink);
+}
+
+/* Overlay Menus */
+#overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 20;
+    pointer-events: none;
+}
+
+.menu-screen {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 40px;
+    pointer-events: all;
+    transition: opacity 0.5s ease;
+}
+
+.menu-screen.active {
+    display: flex;
+}
+
+.neon-text {
+    font-family: var(--font-heading);
+    font-size: 4rem;
+    margin-bottom: 0.5rem;
+    color: #fff;
+    text-shadow: 
+        0 0 10px var(--neon-cyan),
+        0 0 20px var(--neon-cyan),
+        0 0 40px var(--neon-cyan);
+    letter-spacing: 5px;
+}
+
+.extreme-text {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    color: var(--neon-pink);
+    margin-bottom: 2rem;
+    text-shadow: 0 0 10px var(--neon-pink);
+    transform: skew(-10deg);
+}
+
+.neon-text-red {
+    font-family: var(--font-heading);
+    font-size: 3rem;
+    color: var(--neon-red);
+    text-shadow: 0 0 20px var(--neon-red);
+    margin-bottom: 1rem;
+}
+
+.description {
+    font-size: 1.1rem;
+    margin-bottom: 3rem;
+    color: #aaa;
+    max-width: 400px;
+}
+
+/* Buttons */
+.neon-button, .neon-button-red {
+    padding: 15px 40px;
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    background: transparent;
+    border: 2px solid var(--neon-cyan);
+    color: var(--neon-cyan);
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    position: relative;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+}
+
+.neon-button:hover {
+    background: var(--neon-cyan);
+    color: #000;
+    box-shadow: 0 0 30px var(--neon-cyan);
+}
+
+.neon-button-red {
+    border-color: var(--neon-red);
+    color: var(--neon-red);
+}
+
+.neon-button-red:hover {
+    background: var(--neon-red);
+    color: #fff;
+    box-shadow: 0 0 30px var(--neon-red);
+}
+
+/* Notifications */
+#notif-bar {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--neon-yellow);
+    font-weight: 700;
+    font-size: 1.5rem;
+    text-shadow: 0 0 10px var(--neon-yellow);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+/* Level Up Animation */
+@keyframes flash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.flash {
+    animation: flash 0.5s infinite;
+}

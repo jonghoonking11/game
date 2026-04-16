@@ -102,14 +102,23 @@ canvas {
     color: #fff;
     text-shadow: 0 0 10px var(--neon-cyan);
     letter-spacing: 4px;
+    line-height: 1;
+}
+
+.lives-display {
+    font-size: 1.2rem;
+    color: var(--critical-red);
+    text-shadow: 0 0 8px var(--critical-red);
+    margin-top: 5px;
+    letter-spacing: 5px;
 }
 
 .level-display {
     font-family: var(--font-heading);
-    font-size: 1.5rem;
+    font-size: 2.5rem;
     color: var(--neon-magenta);
     text-align: right;
-    text-shadow: 0 0 10px var(--neon-magenta);
+    text-shadow: 0 0 15px var(--neon-magenta), 0 0 30px var(--neon-magenta);
 }
 
 /* Overlay & Screens */
@@ -232,4 +241,49 @@ h1.glitch {
 
 .critical-flash {
     animation: flash 0.2s infinite;
+}
+
+#notif-bar {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--critical-red);
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    text-shadow: 0 0 15px var(--critical-red);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: 200;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 5px;
+}
+
+/* Event Mode: Golden Theme */
+#game-wrapper.event-mode {
+    background: radial-gradient(circle at center, #2b2100 0%, #000 100%);
+    border-color: #ffd700;
+    animation: golden-glow 2s infinite;
+}
+
+.event-mode #energy-bar {
+    background: #ffd700;
+    box-shadow: 0 0 15px #ffd700;
+}
+
+.event-mode .score-display {
+    color: #ffd700;
+    text-shadow: 0 0 15px #ffd700;
+}
+
+.event-mode .level-display {
+    color: #fff;
+    text-shadow: 0 0 20px #ffd700;
+}
+
+@keyframes golden-glow {
+    0%, 100% { box-shadow: 0 0 30px rgba(255, 215, 0, 0.2); }
+    50% { box-shadow: 0 0 70px rgba(255, 215, 0, 0.5); }
 }

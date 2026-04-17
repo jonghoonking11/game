@@ -11,11 +11,15 @@ const startBtn = document.getElementById('start-btn');
 const restartBtn = document.getElementById('restart-btn');
 const hud = document.getElementById('hud');
 const skillBtnZ = document.getElementById('skill-button-z');
+const fsBtn = document.getElementById('fs-btn');
+const bottomUidDisplay = document.getElementById('bottom-uid');
+const skillUidDisplay = document.getElementById('skill-uid-tag');
 
 // Game State
 let gameState = 'START'; // START, PLAYING, GAMEOVER
 let score = 0;
 let highScore = 0;
+let currentUID = '00000000';
 let baseSpeed = 8;
 let currentSpeed = 8;
 let frames = 0;
@@ -135,6 +139,19 @@ skillBtnZ.addEventListener('touchstart', (e) => {
 
 skillBtnZ.addEventListener('mousedown', (e) => {
     dash();
+});
+
+// Fullscreen Toggle
+fsBtn.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+            console.log(`Error attempting to enable full-screen mode: ${err.message}`);
+        });
+        fsBtn.innerText = 'EXIT';
+    } else {
+        document.exitFullscreen();
+        fsBtn.innerText = 'FS';
+    }
 });
 
 // Particles
@@ -295,6 +312,11 @@ function gameOver() {
 }
 
 function resetGame() {
+    // Generate new UID for session
+    currentUID = Math.floor(Math.random() * 90000000 + 10000000).toString();
+    bottomUidDisplay.innerText = `UID: ${currentUID}`;
+    skillUidDisplay.innerText = `UID: ${currentUID}`;
+
     player.x = 150;
     player.y = canvas.height / 2;
     player.vy = 0;
@@ -422,6 +444,10 @@ function draw() {
                 ctx.shadowBlur = 15;
                 ctx.shadowColor = '#0ff';
                 ctx.fillText('Z', player.x + player.size / 2, player.y - 15);
+                
+                // UID 표시 추가
+                ctx.font = '700 10px Outfit';
+                ctx.fillText(`UID: ${currentUID}`, player.x + player.size / 2, player.y - 40);
                 ctx.restore();
             }
         }

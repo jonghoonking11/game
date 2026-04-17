@@ -1,659 +1,446 @@
-/**
- * Neon Void: Zero Gravity
- * Core Game Engine (Hardcore Version)
- */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
 
-class SoundEngine {
-    constructor() {
-        this.ctx = null;
-    }
+// UI Elements
+const uiStartScreen = document.getElementById('start-screen');
+const uiGameOverScreen = document.getElementById('game-over-screen');
+const scoreDisplay = document.getElementById('score');
+const finalScoreDisplay = document.getElementById('final-score');
+const highScoreDisplay = document.getElementById('high-score');
+const startBtn = document.getElementById('start-btn');
+const restartBtn = document.getElementById('restart-btn');
+const hud = document.getElementById('hud');
+const skillBtnZ = document.getElementById('skill-button-z');
 
-    init() {
-        if (!this.ctx) {
-            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-    }
+// Game State
+let gameState = 'START'; // START, PLAYING, GAMEOVER
+let score = 0;
+let highScore = 0;
+let baseSpeed = 8;
+let currentSpeed = 8;
+let frames = 0;
+let hitStopFrames = 0;
+let screenShake = 0;
 
-    async play(type) {
-        if (!this.ctx) return;
-        if (this.ctx.state === 'suspended') await this.ctx.resume();
+// Resolution & Scaling
+const LOGICAL_HEIGHT = 720;
+let scale = 1;
 
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    scale = canvas.height / LOGICAL_HEIGHT;
+}
+window.addEventListener('resize', resize);
+resize();
 
-        const now = this.ctx.currentTime;
+// Player
+const player = {
+    x: 150,
+    y: canvas.height / 2,
+    size: 30,
+    vy: 0,
+    gravity: 0.6,
+    jumpForce: -10,
+    isDashing: false,
+    dashDuration: 20, // frames
+    dashTimer: 0,
+    color: '#0ff',
+    trail: []
+};
 
-        switch(type) {
-            case 'wall':
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(150, now);
-                gain.gain.setValueAtTime(0.05, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
-                osc.start(now);
-                osc.stop(now + 0.05);
-                break;
-            case 'paddle':
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(100, now);
-                osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
-                gain.gain.setValueAtTime(0.15, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                osc.start(now);
-                osc.stop(now + 0.1);
-                break;
-            case 'brick':
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(800 + Math.random() * 200, now);
-                gain.gain.setValueAtTime(0.1, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                osc.start(now);
-                osc.stop(now + 0.1);
-                break;
-            case 'levelup':
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(200, now);
-                osc.frequency.exponentialRampToValueAtTime(800, now + 0.4);
-                gain.gain.setValueAtTime(0.1, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-                osc.start(now);
-                osc.stop(now + 0.4);
-                break;
-            case 'warning':
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(440, now);
-                osc.frequency.setValueAtTime(330, now + 0.1);
-                gain.gain.setValueAtTime(0.05, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-                osc.start(now);
-                osc.stop(now + 0.2);
-                break;
-            case 'gameover':
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(300, now);
-                osc.frequency.linearRampToValueAtTime(50, now + 1);
-                gain.gain.setValueAtTime(0.2, now);
-                gain.gain.linearRampToValueAtTime(0.01, now + 1);
-                osc.start(now);
-                osc.stop(now + 1);
-                break;
-        }
+// Arrays
+let walls = [];
+let particles = [];
+
+// Input handling
+const keys = { space: false, z: false };
+let touchStartX = 0;
+let touchStartY = 0;
+
+function jump() {
+    if (gameState !== 'PLAYING') return;
+    player.vy = player.jumpForce;
+    createParticles(player.x, player.y + player.size, 5, '#fff', 2);
+}
+
+function dash() {
+    if (gameState !== 'PLAYING') return;
+    if (!player.isDashing) {
+        player.isDashing = true;
+        player.dashTimer = player.dashDuration;
+        player.vy = 0; // stop vertical movement during initial dash
+        createParticles(player.x, player.y, 10, '#0ff', 4);
     }
 }
 
-class Vector {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+        jump();
+        e.preventDefault();
     }
-    add(v) { this.x += v.x; this.y += v.y; return this; }
-    sub(v) { this.x -= v.x; this.y -= v.y; return this; }
-    mult(n) { this.x *= n; this.y *= n; return this; }
-    mag() { return Math.sqrt(this.x * this.x + this.y * this.y); }
-    normalize() {
-        let m = this.mag();
-        if (m > 0) this.mult(1 / m);
-        return this;
+    if (e.code === 'KeyZ') {
+        dash();
     }
-    clone() { return new Vector(this.x, this.y); }
-}
+});
 
-class Particle {
-    constructor(x, y, color) {
-        this.pos = new Vector(x, y);
-        this.vel = new Vector((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10);
-        this.acc = new Vector(0, 0.2);
-        this.life = 1.0;
-        this.decay = 0.02 + Math.random() * 0.03;
-        this.color = color;
+window.addEventListener('mousedown', (e) => {
+    if (e.target.tagName === 'BUTTON') return;
+    if (gameState !== 'PLAYING') return;
+    if (e.button === 0) { //  Left click (Anywhere Jump)
+        jump();
+    } else if (e.button === 2) { // Right click
+        dash();
     }
-    update() {
-        this.vel.add(this.acc);
-        this.pos.add(this.vel);
-        this.life -= this.decay;
-    }
-    draw(ctx) {
-        ctx.save();
-        ctx.globalAlpha = this.life;
-        ctx.fillStyle = this.color;
-        ctx.fillRect(this.pos.x, this.pos.y, 3, 3);
-        ctx.restore();
-    }
-}
+});
 
-class Ball {
-    constructor(x, y, radius, speed) {
-        this.pos = new Vector(x, y);
-        this.vel = new Vector(Math.random() > 0.5 ? 1 : -1, -1).normalize().mult(speed);
-        this.radius = radius;
-        this.speed = speed;
-        this.trail = [];
-    }
+// Mobile touch input
+window.addEventListener('touchstart', (e) => {
+    if (e.target.tagName === 'BUTTON') return;
+    touchStartX = e.changedTouches[0].clientX;
+    touchStartY = e.changedTouches[0].clientY;
+}, { passive: true });
 
-    update() {
-        this.trail.push(this.pos.clone());
-        if (this.trail.length > 8) this.trail.shift();
-        this.pos.add(this.vel);
+window.addEventListener('touchend', (e) => {
+    if (e.target.tagName === 'BUTTON') return;
+    if (gameState !== 'PLAYING') return;
+    
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    
+    const dx = touchEndX - touchStartX;
+    const dy = touchEndY - touchStartY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    // Swipe check: if dragged more than 30px, trigger Dash
+    if (distance > 30) {
+        dash();
+    } else {
+        // Otherwise, it's a simple tap: trigger Jump
+        jump();
     }
+}, { passive: true });
 
-    draw(ctx) {
-        // Trail
-        this.trail.forEach((p, i) => {
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, this.radius * (i / this.trail.length), 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(0, 243, 255, ${0.1 * (i / this.trail.length)})`;
-            ctx.fill();
+// Prevent context menu
+window.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    if (gameState === 'PLAYING') dash();
+});
+
+// UI Skill Button Binding
+skillBtnZ.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    dash();
+}, { passive: false });
+
+skillBtnZ.addEventListener('mousedown', (e) => {
+    dash();
+});
+
+// Particles
+function createParticles(x, y, count, color, speed) {
+    for (let i = 0; i < count; i++) {
+        particles.push({
+            x: x,
+            y: y,
+            vx: (Math.random() - 0.5) * speed * 2,
+            vy: (Math.random() - 0.5) * speed * 2,
+            life: 1.0,
+            decay: Math.random() * 0.05 + 0.02,
+            color: color,
+            size: Math.random() * 4 + 2
         });
-
-        // Main Ball
-        ctx.beginPath();
-        ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = '#fff';
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = '#00f3ff';
-        ctx.fill();
-        ctx.shadowBlur = 0;
     }
 }
 
-class Brick {
-    constructor(x, y, w, h, level = 1, isTrap = false) {
-        this.x = x;
-        this.y = y;
-        this.w = w;
-        this.h = h;
-        this.health = level; 
-        this.isTrap = isTrap;
-        this.isLife = false; // New property for life bricks
-        this.active = true;
-        this.color = isTrap ? '#ff0000' : this.getColor(level);
-        this.pulse = 0;
+function updateParticles() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= p.decay;
+        if (p.life <= 0) {
+            particles.splice(i, 1);
+        }
+    }
+}
+
+function drawParticles() {
+    for (let p of particles) {
+        ctx.globalAlpha = p.life;
+        ctx.fillStyle = p.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = p.color;
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+    }
+    ctx.globalAlpha = 1.0;
+    ctx.shadowBlur = 0;
+}
+
+// Walls
+function spawnWall() {
+    const minHeight = 50;
+    const blockHeight = 120; // Height of the breakable segment
+    const wallWidth = 60;
+    
+    // Pick a random Y position for the target block
+    const targetY = Math.random() * (canvas.height - blockHeight - 100) + 50;
+    
+    let wallGroup = {
+        x: canvas.width,
+        width: wallWidth,
+        passed: false,
+        blocks: [
+            // Top solid block
+            { y: 0, height: targetY, type: 'solid' },
+            // Target breakable block
+            { y: targetY, height: blockHeight, type: 'breakable', broken: false },
+            // Bottom solid block
+            { y: targetY + blockHeight, height: canvas.height - (targetY + blockHeight), type: 'solid' }
+        ]
+    };
+    
+    walls.push(wallGroup);
+}
+
+function updateWalls() {
+    // Spawn logic
+    let spawnRate = Math.max(60, 120 - Math.floor(frames / 100)); // gets faster
+    if (frames % spawnRate === 0) {
+        spawnWall();
     }
 
-    getColor(level) {
-        const colors = ['#00f3ff', '#ff00ff', '#39ff14', '#ff3131', '#fefe00'];
-        return colors[(level - 1) % colors.length];
-    }
-
-    draw(ctx) {
-        if (!this.active) return;
+    for (let i = walls.length - 1; i >= 0; i--) {
+        let w = walls[i];
+        w.x -= currentSpeed;
         
-        if (this.isTrap) {
-            this.pulse += 0.1;
-            ctx.shadowBlur = 10 + Math.sin(this.pulse) * 5;
-            ctx.shadowColor = '#ff0000';
-            ctx.fillStyle = (Math.floor(this.pulse) % 2 === 0) ? '#000' : '#ff0000';
-        } else if (this.isLife) {
-            this.pulse += 0.05;
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = '#ff69b4';
-            ctx.fillStyle = '#ff69b4';
-        } else {
-            ctx.fillStyle = this.color;
-            ctx.shadowBlur = 5;
-            ctx.shadowColor = this.color;
+        // Score logic
+        if (!w.passed && w.x + w.width < player.x) {
+            w.passed = true;
+            score += 10;
+            scoreDisplay.innerText = score;
+        }
+
+        // Collision Logic
+        if (w.x < player.x + player.size && w.x + w.width > player.x) {
+            for (let b of w.blocks) {
+                if (b.type === 'breakable' && b.broken) continue;
+                
+                // check Y overlap
+                if (player.y < b.y + b.height && player.y + player.size > b.y) {
+                    // Collision!
+                    if (b.type === 'breakable' && player.isDashing) {
+                        // Break it!
+                        b.broken = true;
+                        score += 50;
+                        scoreDisplay.innerText = score;
+                        screenShake = 20; // 진동 강화
+                        hitStopFrames = 8; // 히트스탑 강화
+                        createParticles(w.x + w.width/2, b.y + b.height/2, 40, '#0ff', 10);
+                    } else {
+                        // Dead
+                        gameOver();
+                    }
+                }
+            }
         }
         
-        ctx.fillRect(this.x, this.y, this.w, this.h);
-        
-        if (this.isLife) {
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 14px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('❤️', this.x + this.w / 2, this.y + this.h / 1.5);
-        } else if (this.health > 1 && !this.isTrap) {
+        // Remove offscreen walls
+        if (w.x + w.width < 0) {
+            walls.splice(i, 1);
+        }
+    }
+}
+
+function drawWalls() {
+    for (let w of walls) {
+        for (let b of w.blocks) {
+            if (b.type === 'breakable' && b.broken) continue;
+
+            ctx.fillStyle = b.type === 'solid' ? '#800' : '#0ff';
+            ctx.shadowBlur = b.type === 'solid' ? 0 : 15;
+            ctx.shadowColor = b.type === 'solid' ? 'transparent' : '#0ff';
+            
+            ctx.fillRect(w.x, b.y, w.width, b.height);
+            
+            // outline
+            ctx.shadowBlur = 0;
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 2;
-            ctx.strokeRect(this.x + 2, this.y + 2, this.w - 4, this.h - 4);
+            ctx.strokeRect(w.x, b.y, w.width, b.height);
+            
+            // Inner Target indicator for breakable
+            if (b.type === 'breakable') {
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.fillRect(w.x + 20, b.y + 20, w.width - 40, b.height - 40);
+            }
         }
-        ctx.shadowBlur = 0;
     }
 }
 
-class GravityWell {
-    constructor(x, y, radius, strength) {
-        this.pos = new Vector(x, y);
-        this.radius = radius;
-        this.strength = strength;
-        this.angle = 0;
-    }
-    draw(ctx) {
-        this.angle += 0.1;
-        ctx.save();
-        ctx.translate(this.pos.x, this.pos.y);
-        ctx.rotate(this.angle);
-        ctx.beginPath();
-        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(255, 0, 255, ${0.2 + Math.sin(this.angle) * 0.1})`;
-        ctx.setLineDash([5, 5]);
-        ctx.stroke();
-        ctx.restore();
-    }
+// Game Loop
+function gameOver() {
+    gameState = 'GAMEOVER';
+    screenShake = 20;
+    createParticles(player.x, player.y, 50, '#f0f', 10);
+    
+    if (score > highScore) highScore = score;
+    finalScoreDisplay.innerText = score;
+    highScoreDisplay.innerText = highScore;
+    
+    setTimeout(() => {
+        uiGameOverScreen.classList.remove('hidden');
+        hud.classList.add('hidden'); // 게임오버 시 버튼 숨김
+    }, 500);
 }
 
-class Game {
-    constructor() {
-        this.canvas = document.getElementById('gameCanvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.sound = new SoundEngine();
-        this.setupElements();
-        this.init();
-        this.bindEvents();
-    }
+function resetGame() {
+    player.x = 150;
+    player.y = canvas.height / 2;
+    player.vy = 0;
+    player.isDashing = false;
+    player.dashTimer = 0;
+    player.trail = [];
+    walls = [];
+    particles = [];
+    score = 0;
+    frames = 0;
+    currentSpeed = baseSpeed;
+    scoreDisplay.innerText = score;
+    gameState = 'PLAYING';
+    
+    uiStartScreen.classList.add('hidden');
+    uiGameOverScreen.classList.add('hidden');
+    hud.classList.remove('hidden'); // 게임 시작 시 버튼 표시
+}
 
-    setupElements() {
-        this.hud = {
-            energyBar: document.getElementById('energy-bar'),
-            score: document.getElementById('score'),
-            lives: document.getElementById('lives'),
-            level: document.getElementById('level'),
-            wrapper: document.getElementById('game-wrapper')
-        };
-        this.screens = {
-            start: document.getElementById('menu-start'),
-            gameOver: document.getElementById('menu-gameover')
-        };
-        this.btnStart = document.getElementById('btn-start');
-        this.btnRetry = document.getElementById('btn-retry');
-        this.finalScore = document.getElementById('final-score');
-    }
+function update() {
+    if (gameState === 'PLAYING') {
+        // Hitstop logic
+        if (hitStopFrames > 0) {
+            hitStopFrames--;
+            return; // skip physics this frame
+        }
 
-    init() {
-        // Define objects FIRST
-        this.gameState = 'START';
-        this.energy = 100;
-        this.score = 0;
-        this.lives = 3;
-        this.level = 1;
-        this.basePaddleWidth = 120; // Permanent width
-        this.eventMode = false;
-        this.eventBricksBroken = 0;
-        this.bricks = [];
-        this.particles = [];
-        this.gravityWells = [];
-        this.paddle = { x: 0, y: 0, w: this.basePaddleWidth, h: 12 };
-        this.ball = null;
-        this.keys = { left: false, right: false };
-        this.lastSpeedScore = 0; 
-        this.lastSpeedBoostTime = 0; 
-        this.lastWarningTime = 0;
-
-        // Then call resize and logic
-        this.resize();
-    }
-
-    bindEvents() {
-        window.addEventListener('resize', () => this.resize());
-        window.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-        window.addEventListener('keydown', (e) => this.handleKeyDown(e));
-        window.addEventListener('keyup', (e) => this.handleKeyUp(e));
+        frames++;
         
-        this.btnStart.onclick = () => this.start();
-        this.btnRetry.onclick = () => this.start();
+        // Difficulty increase
+        if (frames % 300 === 0) currentSpeed += 0.5;
+
+        // Player physics
+        player.vy += player.gravity;
+        player.y += player.vy;
         
-        requestAnimationFrame((t) => this.loop(t));
-    }
-
-    resize() {
-        const container = document.getElementById('game-wrapper');
-        this.canvas.width = container.clientWidth;
-        this.canvas.height = container.clientHeight;
-        this.paddle.y = this.canvas.height - 60;
-    }
-
-    start() {
-        this.sound.init(); 
-        this.init();
-        this.gameState = 'READY'; 
-        this.screens.start.classList.remove('active');
-        this.screens.gameOver.classList.remove('active');
-        this.hud.wrapper.classList.remove('event-mode'); // Reset theme
-        this.createLevel();
-        
-        this.showNotification('READY...');
-        
-        setTimeout(() => {
-            if (this.gameState === 'READY') {
-                this.gameState = 'PLAYING';
-                this.ball = new Ball(this.canvas.width / 2, this.paddle.y - 20, 8, 5 + this.level * 0.5);
-                this.showNotification('START!!');
+        // Dash logic
+        if (player.dashTimer > 0) {
+            player.dashTimer--;
+            player.color = '#fff'; // turning white while dashing
+            player.gravity = 0; // suspend gravity
+            player.vy = 0;
+            
+            // create dash trail
+            if (frames % 2 === 0) {
+                player.trail.push({x: player.x, y: player.y, alpha: 0.8});
             }
-        }, 1000);
-        
-        this.lastWarningTime = 0;
-    }
-
-    createLevel() {
-        const rows = 4 + this.level;
-        const cols = 10;
-        const pad = 6;
-        const offsetTop = 100;
-        const brickW = (this.canvas.width - 60 - (cols - 1) * pad) / cols;
-        const brickH = 18;
-
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                const hp = (r === 0 && this.level > 2) ? 2 : 1;
-                // Lowered chance for trap brick
-                const isTrap = Math.random() < (0.06 + this.level * 0.02);
-                this.bricks.push(new Brick(30 + c * (brickW + pad), offsetTop + r * (brickH + pad), brickW, brickH, hp, isTrap));
-            }
-        }
-
-        // LEVEL 5 EVENT MODE TRANSITION
-        if (this.level === 5) {
-            this.enterEventMode();
-        } else if (this.eventMode) {
-            this.exitEventMode();
-        }
-
-        // Add ONE Life Brick on levels multiple of 3
-        if (this.level % 3 === 0 && this.bricks.length > 0) {
-            const randomIndex = Math.floor(Math.random() * this.bricks.length);
-            const target = this.bricks[randomIndex];
-            target.isLife = true;
-            target.isTrap = false;
-            target.health = 1;
-        }
-
-        // Add Gravity Well for level 2+
-        if (this.level >= 2) {
-            this.gravityWells.push(new GravityWell(
-                this.canvas.width * (0.2 + Math.random() * 0.6),
-                this.canvas.height * (0.3 + Math.random() * 0.2),
-                50 + Math.random() * 50,
-                0.2
-            ));
-        }
-    }
-
-    handleMouseMove(e) {
-        if (this.gameState !== 'PLAYING') return;
-        const rect = this.canvas.getBoundingClientRect();
-        this.paddle.x = (e.clientX - rect.left) - this.paddle.w / 2;
-        this.clampPaddle();
-    }
-
-    handleKeyDown(e) {
-        if (e.code === 'ArrowLeft') this.keys.left = true;
-        if (e.code === 'ArrowRight') this.keys.right = true;
-    }
-    handleKeyUp(e) {
-        if (e.code === 'ArrowLeft') this.keys.left = false;
-        if (e.code === 'ArrowRight') this.keys.right = false;
-    }
-
-    clampPaddle() {
-        if (this.paddle.x < 0) this.paddle.x = 0;
-        if (this.paddle.x + this.paddle.w > this.canvas.width) this.paddle.x = this.canvas.width - this.paddle.w;
-    }
-
-    loop(t) {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        if (this.gameState === 'PLAYING' || this.gameState === 'READY') {
-            this.update();
-        }
-
-        this.draw();
-        requestAnimationFrame((t) => this.loop(t));
-    }
-
-    update() {
-        // ENERGY DRAIN (Punishing mechanics)
-        const drainRate = 0.05 + (this.level * 0.02);
-        this.energy -= drainRate;
-
-        if (this.keys.left) this.paddle.x -= 10;
-        if (this.keys.right) this.paddle.x += 10;
-        this.clampPaddle();
-
-        if (this.ball) {
-            this.ball.update();
-
-            // Gravity Wells
-            this.gravityWells.forEach(well => {
-                const diff = well.pos.clone().sub(this.ball.pos);
-                const dist = diff.mag();
-                if (dist < well.radius * 2) {
-                    const force = diff.normalize().mult(well.strength);
-                    this.ball.vel.add(force).normalize().mult(this.ball.speed);
-                }
-            });
-
-            // Wall Collisions
-            if (this.ball.pos.x < this.ball.radius || this.ball.pos.x > this.canvas.width - this.ball.radius) {
-                this.ball.vel.x *= -1;
-                this.sound.play('wall');
-                this.shake();
-            }
-            if (this.ball.pos.y < this.ball.radius) {
-                this.ball.vel.y *= -1;
-                this.sound.play('wall');
-                this.shake();
-            }
-
-            // Paddle Collision
-            if (this.ball.pos.y + this.ball.radius > this.paddle.y && 
-                this.ball.pos.y < this.paddle.y + this.paddle.h &&
-                this.ball.pos.x > this.paddle.x && 
-                this.ball.pos.x < this.paddle.x + this.paddle.w) {
-                
-                const hitPos = (this.ball.pos.x - (this.paddle.x + this.paddle.w / 2)) / (this.paddle.w / 2);
-                this.ball.vel.x = hitPos * this.ball.speed;
-                this.ball.vel.y = -Math.abs(this.ball.vel.y);
-                this.ball.vel.normalize().mult(this.ball.speed);
-                this.sound.play('paddle');
-                this.createBurst(this.ball.pos.x, this.ball.pos.y, '#fff', 5);
-            }
-
-            // Death
-            if (this.ball.pos.y > this.canvas.height) {
-                this.loseLife();
-                if (this.lives > 0) this.resetBall();
-            }
-
-            // Bricks Collision
-            this.bricks.forEach(b => {
-                if (!b.active) return;
-                if (this.ball.pos.x > b.x && this.ball.pos.x < b.x + b.w && 
-                    this.ball.pos.y > b.y && this.ball.pos.y < b.y + b.h) {
-                    
-                    this.ball.vel.y *= -1;
-                    b.health--;
-                    if (b.health <= 0) {
-                        b.active = false;
-                        if (b.isTrap) {
-                            this.energy -= 15;
-                            this.score = Math.max(0, this.score - 50);
-                            this.showNotification('보이드 트랩: 에너지가 손실되었습니다!');
-                            this.sound.play('gameover'); // Use negative sound
-                        } else if (b.isLife) {
-                            this.lives = Math.min(5, this.lives + 1); // Max 5 lives for balance
-                            this.showNotification('생명력 복구: 목숨이 하나 늘어났습니다!');
-                            this.sound.play('levelup');
-                        } else {
-                            this.score += 100 * this.level;
-                            this.energy = Math.min(100, this.energy + 12);
-                            this.sound.play('brick');
-                            if (this.eventMode) this.eventBricksBroken++;
-                        }
-                    }
-                    this.createBurst(b.x + b.w/2, b.y + b.h/2, b.color, 15);
-                    
-                    // Anti-speed spam logic
-                    const now = performance.now();
-                    if (now - this.lastSpeedBoostTime > 100) {
-                        this.ball.speed += 0.02;
-                        this.lastSpeedBoostTime = now;
-                    }
-                    
-                    this.shake();
-                }
-            });
-
-            // Acceleration and Level Up every 1000 points
-            if (this.score >= this.lastSpeedScore + 1000) {
-                this.lastSpeedScore += 1000;
-                this.level++;
-                this.ball.speed += 0.5; 
-                this.ball.vel.normalize().mult(this.ball.speed);
-                this.showNotification(`레벨 업: 레벨 ${String(this.level).padStart(2, '0')} 도달!`);
-                this.sound.play('levelup');
-                
-                // If level jump hits 5 or passes it
-                if (this.level === 5) this.createLevel(); // New level setup
-            }
-
-            if (this.bricks.every(b => !b.active)) {
-                this.level++;
-                this.sound.play('levelup');
-                this.createLevel();
-                this.resetBall();
-                this.energy = Math.min(100, this.energy + 30);
-            }
-        }
-
-        // Particle Update
-        this.particles.forEach((p, i) => {
-            p.update();
-            if (p.life <= 0) this.particles.splice(i, 1);
-        });
-
-        if (this.energy <= 0) {
-            this.loseLife();
-            if (this.lives > 0) {
-                this.energy = 100;
-            }
-        }
-
-        if (this.lives <= 0) {
-            if (this.eventMode) {
-                this.exitEventMode();
-                this.level = 6;
-                this.lives = 1; // Second chance
-                this.energy = 100;
-                this.createLevel();
-                this.resetBall();
-                this.showNotification('이벤트 조기 종료: 레벨 06으로 복귀합니다!');
-            } else {
-                this.gameOver();
-            }
-        }
-
-        // Warning sound for low energy
-        if (this.energy < 30 && performance.now() - this.lastWarningTime > 1000) {
-            this.sound.play('warning');
-            this.lastWarningTime = performance.now();
-        }
-
-        this.updateHUD();
-    }
-
-    updateHUD() {
-        this.hud.energyBar.style.width = `${this.energy}%`;
-        this.hud.energyBar.style.backgroundColor = this.energy < 30 ? '#ff3131' : '#00f3ff';
-        this.hud.score.innerText = String(Math.floor(this.score)).padStart(6, '0');
-        this.hud.lives.innerText = '❤️'.repeat(this.lives);
-        this.hud.level.innerText = String(this.level).padStart(2, '0');
-        
-        if (this.energy < 30) {
-            this.hud.wrapper.classList.add('energy-critical');
+            skillBtnZ.classList.add('active'); // 버튼 활성화 효과
         } else {
-            this.hud.wrapper.classList.remove('energy-critical');
+            player.isDashing = false;
+            player.color = '#0ff';
+            player.gravity = 0.6;
+            skillBtnZ.classList.remove('active');
         }
-    }
 
-    createBurst(x, y, color, count) {
-        for (let i = 0; i < count; i++) {
-            this.particles.push(new Particle(x, y, color));
+        // Fade trail
+        for (let t of player.trail) {
+            t.alpha -= 0.05;
         }
-    }
+        player.trail = player.trail.filter(t => t.alpha > 0);
 
-    shake() {
-        this.hud.wrapper.style.transform = `translate(${(Math.random()-0.5)*5}px, ${(Math.random()-0.5)*5}px)`;
-        setTimeout(() => this.hud.wrapper.style.transform = '', 50);
-    }
-
-    loseLife() {
-        this.lives--;
-        this.sound.play('gameover');
-        this.shake();
-        this.showNotification('시스템 피해: 목숨을 잃었습니다!');
-        this.hud.wrapper.classList.add('critical-flash');
-        setTimeout(() => this.hud.wrapper.classList.remove('critical-flash'), 500);
-    }
-
-    gameOver() {
-        this.gameState = 'OVER';
-        this.sound.play('gameover');
-        this.finalScore.innerText = this.score;
-        this.screens.gameOver.classList.add('active');
-    }
-
-    draw() {
-        this.gravityWells.forEach(w => w.draw(this.ctx));
-        this.bricks.forEach(b => b.draw(this.ctx));
-        if (this.ball) this.ball.draw(this.ctx);
-        
-        // Paddle
-        this.ctx.fillStyle = this.energy < 30 ? '#ff3131' : '#00f3ff';
-        this.ctx.shadowBlur = 15;
-        this.ctx.shadowColor = this.ctx.fillStyle;
-        this.ctx.fillRect(this.paddle.x, this.paddle.y, this.paddle.w, this.paddle.h);
-        this.ctx.shadowBlur = 0;
-
-        this.particles.forEach(p => p.draw(this.ctx));
-    }
-
-    showNotification(text) {
-        const notifBar = document.getElementById('notif-bar');
-        if (!notifBar) return;
-        notifBar.innerText = text;
-        notifBar.style.opacity = '1';
-        // Glitch effect on notification
-        this.hud.wrapper.classList.add('critical-flash');
-        
-        setTimeout(() => { 
-            notifBar.style.opacity = '0'; 
-            this.hud.wrapper.classList.remove('critical-flash');
-        }, 2000);
-    }
-
-    resetBall() {
-        const radius = this.eventMode ? 16 : 8;
-        this.ball = new Ball(this.canvas.width / 2, this.paddle.y - 20, radius, 5 + this.level * 0.5);
-    }
-
-    enterEventMode() {
-        this.eventMode = true;
-        this.eventBricksBroken = 0;
-        this.paddle.w = 240; // Mega Paddle
-        if (this.ball) this.ball.radius = 16; // Mega Ball
-        this.hud.wrapper.classList.add('event-mode');
-        this.showNotification('GOLDEN EVENT: MEGA MODE ACTIVATED!');
-    }
-
-    exitEventMode() {
-        const bonus = (this.eventBricksBroken / 2) * 2.0; 
-        this.basePaddleWidth += bonus;
-        this.eventMode = false;
-        this.paddle.w = this.basePaddleWidth;
-        
-        // Reset Ball properties if it exists
-        if (this.ball) {
-            this.ball.radius = 8;
-            this.ball.speed = 5 + this.level * 0.4; // Reset to a sane base speed for current level
-            this.ball.vel.normalize().mult(this.ball.speed);
+        // Bounds check (floor/ceiling)
+        if (player.y < 0) {
+            player.y = 0;
+            player.vy = 0;
         }
-        
-        this.hud.wrapper.classList.remove('event-mode');
-        this.showNotification(`이벤트 종료: 패들 너비 +${bonus.toFixed(1)}px 영구 확장!`);
+        if (player.y + player.size > canvas.height) {
+            player.y = canvas.height - player.size;
+            player.vy = 0;
+            jump(); // auto jump on floor to make it easier, or game over?
+            // Let's make hitting floor game over for hardcore!
+            gameOver(); 
+        }
+
+        updateWalls();
     }
+    
+    updateParticles();
 }
 
-// Start Game
-window.onload = () => {
-    new Game();
-};
+function draw() {
+    // Clear screen with dark trailing effect
+    ctx.fillStyle = 'rgba(5, 5, 16, 0.6)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.save();
+    
+    // Apply logical scaling
+    ctx.scale(scale, scale);
+    
+    // Screenshake
+    if (screenShake > 0) {
+        const dx = (Math.random() - 0.5) * screenShake;
+        const dy = (Math.random() - 0.5) * screenShake;
+        ctx.translate(dx, dy);
+        screenShake *= 0.9;
+        if (screenShake < 0.5) screenShake = 0;
+    }
+
+    drawWalls();
+    
+    // Draw trail
+    for (let t of player.trail) {
+        ctx.globalAlpha = t.alpha;
+        ctx.fillStyle = '#0ff';
+        ctx.fillRect(t.x, t.y, player.size, player.size);
+    }
+    ctx.globalAlpha = 1.0;
+
+    // Draw Player
+    if (gameState !== 'GAMEOVER' || particles.length > 0) { // don't draw player if dead
+        if (gameState !== 'GAMEOVER') {
+            ctx.fillStyle = player.color;
+            ctx.shadowBlur = player.isDashing ? 30 : 15;
+            ctx.shadowColor = player.color;
+            ctx.fillRect(player.x, player.y, player.size, player.size);
+            ctx.shadowBlur = 0;
+
+            // 스킬(대시) 사용 시 'Z' 표시
+            if (player.isDashing) {
+                ctx.save();
+                ctx.fillStyle = '#fff';
+                ctx.font = '900 24px Outfit';
+                ctx.textAlign = 'center';
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#0ff';
+                ctx.fillText('Z', player.x + player.size / 2, player.y - 15);
+                ctx.restore();
+            }
+        }
+    }
+    
+    drawParticles();
+
+    ctx.restore();
+}
+
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+// Init Game Actions
+startBtn.addEventListener('click', resetGame);
+restartBtn.addEventListener('click', resetGame);
+
+// Start render loop
+loop();

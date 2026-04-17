@@ -2,59 +2,52 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Void: Zero Gravity</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Neon Wall Breaker</title>
+    <meta name="description" content="Hardcore runner game where you break neon walls at high speeds.">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
 </head>
-<body class="hardcore-theme">
-    <div id="game-wrapper" class="glitch-container">
-        <div id="hud">
-            <div class="hud-left">
-                <div class="label">ENERGY</div>
-                <div class="energy-container">
-                    <div id="energy-bar"></div>
-                </div>
-            </div>
-            <div class="hud-center">
-                <div id="score" class="score-display">000000</div>
-                <div id="lives" class="lives-display">❤️❤️❤️</div>
-            </div>
-            <div class="hud-right">
-                <div class="label">LEVEL</div>
-                <div id="level" class="level-display">01</div>
-            </div>
-        </div>
-
+<body>
+    <div id="game-container">
         <canvas id="gameCanvas"></canvas>
-        <div id="notif-bar"></div>
-
-        <div id="overlay">
-            <div id="menu-start" class="screen active">
-                <h1 class="glitch" data-text="NEON VOID">NEON VOID</h1>
-                <h2 class="subtitle">ZERO GRAVITY</h2>
-                <div class="warning">WARNING: HARDCORE DIFFICULTY ENABLED</div>
-                <p class="mission">에너지가 방전되기 전에 모든 장벽을 파괴하십시오.</p>
-                <div class="controls-guide">
-                    <span>[MOUSE] / [ARROW KEYS] TO MOVE</span>
-                    <span>[SPACE] TO PULSE</span>
+        
+        <!-- UI Overlay -->
+        <div id="ui-layer">
+            <div id="score-display">SCORE: <span id="score">0</span></div>
+            
+            <!-- Start Screen -->
+            <div id="start-screen" class="panel glass">
+                <h1>NEON<br>BREAKER</h1>
+                <p class="subtitle">HARDCORE WALL-SMASHING RUNNER</p>
+                <div class="instructions">
+                    <p><span class="key">[SPACE]</span> / <span class="key">화면 어디든 터치</span> : 점프 (공중 점프 가능)</p>
+                    <p><span class="key">[ Z ]</span> / <span class="key">화면 스와이프(밀기)</span> : 대시 시작 & 벽 파괴</p>
+                    <p class="warning">* 공중에 떠 있는 <b>파란색 벽(Target)</b>의 높이에 맞춰 점프한 뒤,<br>부딪히기 직전에 <b>화면을 스와이프(밀기)</b>하여 '대시 상태'가 되어 통과하세요.<br>(대시 없이 부딪히거나 빨간색 벽에 부딪히면 즉사합니다!)</p>
                 </div>
-                <button id="btn-start" class="cyber-button">INITIALIZE</button>
+                <button id="start-btn">START RUN</button>
             </div>
 
-            <div id="menu-gameover" class="screen">
-                <h1 class="critical">VOID CONSUMED YOU</h1>
-                <div class="stat">SCORE: <span id="final-score">0</span></div>
-                <button id="btn-retry" class="cyber-button red">REBOOT SYSTEM</button>
+            <!-- Game Over Screen -->
+            <div id="game-over-screen" class="panel glass hidden">
+                <h2>SYSTEM FAILURE</h2>
+                <div class="score-board">
+                    <p>FINAL SCORE: <span id="final-score">0</span></p>
+                    <p>HIGH SCORE: <span id="high-score">0</span></p>
+                </div>
+                <button id="restart-btn">REBOOT</button>
             </div>
         </div>
 
-        <div id="vfx-layer"></div>
+        <!-- HUD Layer (for fixed controls) -->
+        <div id="hud" class="hidden">
+            <div id="skill-button-z" class="skill-btn">
+                <span class="label">Z</span>
+                <div class="cooldown-overlay"></div>
+            </div>
+        </div>
     </div>
-
-    <!-- Preload some glitch sounds/placeholders if needed in future -->
+    
     <script src="game.js"></script>
 </body>
 </html>
